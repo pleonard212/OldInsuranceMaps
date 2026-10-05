@@ -1,12 +1,12 @@
 <script>
     import Modal, { openModal } from '../../base/Modal.svelte';
     import Copy from 'phosphor-svelte/lib/Copy';
-    import {copyToClipboard} from "../../../lib/utils";
+    import {copyToClipboard, uuid} from "../../../lib/utils";
 
     export let text;
     export let label = "";
 
-    const elementId = window.crypto.randomUUID()
+    const elementId = uuid()
     const modalId = `modal-${elementId}`
 </script>
 
