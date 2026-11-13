@@ -108,11 +108,18 @@ PASSWORD_HASHERS = [
     # 'django.contrib.auth.hashers.BCryptPasswordHasher',
 ]
 
+# Optional instance themes: a comma-separated list of folders, each of which may contain
+# templates/ and static/. They are searched before the built-in ones, so a theme can replace
+# individual templates (e.g. index.html) or add static files without modifying this codebase.
+# A theme can also override the (empty) _theme_head.html, included in every page's <head>.
+THEME_DIRS = [Path(p.strip()) for p in os.getenv("THEME_DIRS", "").split(",") if p.strip()]
+
 TEMPLATES = [
     {
         "NAME": "Project Templates",
         "BACKEND": "django.template.backends.django.DjangoTemplates",
-        "DIRS": [
+        "DIRS": [d / "templates" for d in THEME_DIRS if (d / "templates").is_dir()]
+        + [
             PROJECT_DIR / "frontend" / "templates",
         ],
         "APP_DIRS": True,
@@ -151,7 +158,7 @@ DEFAULT_FILE_STORAGE = "ohmg.core.storages.OverwriteStorage"
 STATIC_URL = "/static/"
 STATIC_ROOT = os.getenv("STATIC_ROOT", BASE_DIR / "static_root")
 # explicitly add the non-standard location of svelte build files
-STATICFILES_DIRS = [
+STATICFILES_DIRS = [d / "static" for d in THEME_DIRS if (d / "static").is_dir()] + [
     PROJECT_DIR / "frontend" / "svelte_components" / "public" / "build",
 ]
 
