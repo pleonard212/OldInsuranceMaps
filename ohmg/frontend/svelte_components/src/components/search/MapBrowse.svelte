@@ -108,7 +108,7 @@
       viewer.map.forEachFeatureAtPixel(
         event.pixel,
         function (feature) {
-          if (hit) return; // only hover on one point at a time
+          if (hit || !feature.getProperties().volumes) return; // only map locations, one at a time
           const props = feature.getProperties();
           const volList = [];
           props.volumes.forEach(function (vol) {
