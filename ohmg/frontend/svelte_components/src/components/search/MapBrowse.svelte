@@ -10,11 +10,14 @@
   import VectorSource from 'ol/source/Vector';
   import VectorLayer from 'ol/layer/Vector';
 
-  import { browseMapStyle } from '../../lib/map/styles';
+  import { browseMapStyle, simpleStyle } from '../../lib/map/styles';
   import { MapViewer } from '../../lib/map/viewers';
 
   export let CONTEXT;
   export let MAP_HEIGHT = '600px';
+  // optional GeoJSON overlay (e.g. a state outline), styled by simplestyle-spec properties;
+  // when given, the map is fit to the overlay instead of to the map locations
+  export let OVERLAY_URL = null;
 
   let container;
   let content;
@@ -63,7 +66,24 @@
       zIndex: 500,
     });
     viewer.addLayer(placeLayer);
-    viewer.map.getView().fit(placeLayer.getSource().getExtent(), {
+
+    let fitExtent = placeLayer.getSource().getExtent();
+    if (OVERLAY_URL) {
+      try {
+        const overlayResponse = await fetch(OVERLAY_URL);
+        const overlaySource = new VectorSource({
+          features: new GeoJSON().readFeatures(await overlayResponse.json(), {
+            dataProjection: 'EPSG:4326',
+            featureProjection: 'EPSG:3857',
+          }),
+        });
+        viewer.addLayer(new VectorLayer({ source: overlaySource, style: simpleStyle, zIndex: 400 }));
+        fitExtent = overlaySource.getExtent();
+      } catch (error) {
+        console.error(`could not load map overlay ${OVERLAY_URL}:`, error);
+      }
+    }
+    viewer.map.getView().fit(fitExtent, {
       padding: [25, 25, 25, 25],
       duration: 500,
     });

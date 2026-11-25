@@ -3,6 +3,7 @@ import xml.etree.ElementTree as ET
 
 import humanize
 import requests
+from django.conf import settings
 from django.shortcuts import render
 from django.views import View
 
@@ -77,6 +78,7 @@ class HomePage(View):
             "MAPBROWSE_PARAMS": {
                 "MAP_HEIGHT": "100%",
                 "CONTEXT": request.ohmg_context,
+                "OVERLAY_URL": settings.HOME_MAP_OVERLAY_URL,
             },
             "FEATURED_MAPS": featured_list,
             "LATEST_MAPS": latest_list,
