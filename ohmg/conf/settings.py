@@ -293,6 +293,12 @@ TITILER_HOST = os.getenv("TITILER_HOST", "")
 # the map is fit to the overlay's extent instead of the map locations. Empty = no overlay.
 HOME_MAP_OVERLAY_URL = os.getenv("HOME_MAP_OVERLAY_URL", "")
 
+# Local (Nevada instance) home map mode: a GeoJSON file of Point features with a "slug" property
+# giving each place's coordinates. When set, every place with maps gets a home map point (placed
+# from this file, falling back to its georeferenced extent) and per-volume progress, instead of
+# only places with georeferenced main content. Empty = upstream behavior.
+PLACE_COORDINATES_FILE = os.getenv("PLACE_COORDINATES_FILE", "")
+
 OPENLAYERS_MAX_TILES_LOADING = os.getenv("OPENLAYERS_MAX_TILES_LOADING", 32)
 
 ## These creds are only actually used by boto3 if ENABLE_S3_STORAGE = True,

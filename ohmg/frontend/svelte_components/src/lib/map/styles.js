@@ -3,6 +3,7 @@ import Stroke from 'ol/style/Stroke';
 import Circle from 'ol/style/Circle';
 import Fill from 'ol/style/Fill';
 import RegularShape from 'ol/style/RegularShape';
+import Icon from 'ol/style/Icon';
 import { asArray } from 'ol/color';
 
 export const colors = {
@@ -199,4 +200,30 @@ export function simpleStyle(feature) {
           })
         : undefined,
   });
+}
+
+// HOME MAP PROGRESS POINTS (PLACE_COORDINATES_FILE mode): full / half / empty circles
+
+function progressCircleSvg(fill) {
+  // fill: 'full' | 'half' | 'none' -- same size and colors as browseMapStyle's circle
+  const c = colors.mainBlue;
+  const body =
+    fill === 'full'
+      ? `<circle cx="9" cy="9" r="6" fill="${c}"/>`
+      : fill === 'half'
+        ? `<circle cx="9" cy="9" r="6" fill="#ffffff"/><path d="M9 3 A6 6 0 0 0 9 15 Z" fill="${c}"/>`
+        : `<circle cx="9" cy="9" r="6" fill="#ffffff"/>`;
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18">${body}<circle cx="9" cy="9" r="6" fill="none" stroke="#000000" stroke-width="2"/></svg>`;
+  return 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
+}
+
+const progressStyles = {
+  main: new Style({ image: new Icon({ src: progressCircleSvg('full') }), zIndex: 3 }),
+  key: new Style({ image: new Icon({ src: progressCircleSvg('half') }), zIndex: 2 }),
+  none: new Style({ image: new Icon({ src: progressCircleSvg('none') }), zIndex: 1 }),
+};
+
+// Points with a "status" property get the progress symbol; others keep browseMapStyle.
+export function browseMapProgressStyle(feature) {
+  return progressStyles[feature.get('status')] ?? browseMapStyle;
 }

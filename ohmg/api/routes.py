@@ -1,9 +1,13 @@
+import json
 import logging
+from collections import defaultdict
+from functools import lru_cache
+from pathlib import Path
 from typing import List
 
 from django.conf import settings
 from django.contrib.gis.geos import Polygon
-from django.db.models import F, Q
+from django.db.models import Count, F, Q
 from django.shortcuts import get_object_or_404
 from ninja import NinjaAPI, Query
 from ninja.errors import ValidationError
@@ -232,9 +236,104 @@ def list_places(request):
     return queryset
 
 
+@lru_cache(maxsize=4)
+def _place_coordinates(path: str, mtime: float) -> dict:
+    """{place slug: [lon, lat]} from PLACE_COORDINATES_FILE (cached until the file changes)."""
+    data = json.loads(Path(path).read_text())
+    return {
+        f["properties"]["slug"]: f["geometry"]["coordinates"]
+        for f in data.get("features", [])
+        if f.get("geometry") and f.get("properties", {}).get("slug")
+    }
+
+
+def _places_geojson_with_progress() -> dict:
+    """Every place that has (non-hidden) maps, with per-volume georeferencing progress.
+
+    Point location: the place's entry in PLACE_COORDINATES_FILE, else the centroid of a
+    georeferenced extent (main content preferred over key map). "status" is "main" if any volume
+    has georeferenced main content, "key" if only key maps are georeferenced, else "none".
+    """
+    path = Path(settings.PLACE_COORDINATES_FILE)
+    coords = _place_coordinates(str(path), path.stat().st_mtime) if path.exists() else {}
+
+    layersets = defaultdict(dict)
+    for ls in (
+        LayerSet.objects.filter(category__slug__in=["main-content", "key-map"])
+        .annotate(n_layers=Count("layer"), n_pages=Count("layer__region__document", distinct=True))
+        .values("map_id", "category__slug", "extent", "n_layers", "n_pages")
+    ):
+        layersets[ls["map_id"]][ls["category__slug"]] = ls
+
+    places = {}
+    maps = (
+        Map.objects.filter(hidden=False)
+        .annotate(n_docs=Count("documents", distinct=True))
+        .prefetch_related("locales")
+        .order_by("year", "volume_number")
+    )
+    for map in maps:
+        main = layersets[map.pk].get("main-content") or {}
+        key = layersets[map.pk].get("key-map") or {}
+        n_main, n_key = main.get("n_layers") or 0, key.get("n_layers") or 0
+        for place in map.locales.all():
+            entry = places.setdefault(
+                place.slug,
+                {"display_name": place.display_name, "maps": 0, "volumes": [], "extent": None},
+            )
+            entry["maps"] += 1
+            if not (n_main or n_key):
+                continue
+            entry["volumes"].append(
+                {
+                    "year": f"{map.year} vol. {map.volume_number}"
+                    if map.volume_number
+                    else map.year,
+                    "url": f"/map/{map.pk}",
+                    "title": map.title,
+                    "sheets": main.get("n_pages") or 0,
+                    "pages": map.n_docs,
+                    "key_map": n_key > 0,
+                }
+            )
+            extent = (n_main and main.get("extent")) or (n_key and key.get("extent"))
+            if extent and not entry["extent"]:
+                entry["extent"] = extent
+
+    features = []
+    for slug, entry in places.items():
+        point = coords.get(slug)
+        if not point and entry["extent"]:
+            point = Polygon().from_bbox(entry["extent"]).centroid.coords
+        if not point:
+            continue
+        has_main = any(v["sheets"] for v in entry["volumes"])
+        has_key = any(v["key_map"] for v in entry["volumes"])
+        features.append(
+            {
+                "type": "Feature",
+                "geometry": {"type": "Point", "coordinates": point},
+                "properties": {
+                    "status": "main" if has_main else ("key" if has_key else "none"),
+                    "volumes": entry["volumes"],
+                    "place": {
+                        "display_name": entry["display_name"],
+                        "url": f"/{slug}/",
+                        "viewer_url": f"/viewer/{slug}" if has_main else None,
+                        "map_count": entry["maps"],
+                    },
+                },
+            }
+        )
+    return {"type": "FeatureCollection", "features": features}
+
+
 @beta2.get("places/geojson/", url_name="places_geojson")
 def get_places_geojson(request):
     """Generate geojson for all places with their maps."""
+
+    if settings.PLACE_COORDINATES_FILE:
+        return _places_geojson_with_progress()
 
     place_dict = {}
     for ls in (

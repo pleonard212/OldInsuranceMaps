@@ -10,7 +10,7 @@
   import VectorSource from 'ol/source/Vector';
   import VectorLayer from 'ol/layer/Vector';
 
-  import { browseMapStyle, simpleStyle } from '../../lib/map/styles';
+  import { browseMapProgressStyle, simpleStyle } from '../../lib/map/styles';
   import { MapViewer } from '../../lib/map/viewers';
 
   export let CONTEXT;
@@ -24,6 +24,37 @@
   let overlay;
 
   let viewer;
+
+  // popup for PLACE_COORDINATES_FILE mode: links to the place page, the viewer (once main
+  // content exists) and each volume with georeferencing work, with its progress
+  function progressPopup(props) {
+    const place = props.place;
+    const n = place.map_count;
+    const describe = (v) => {
+      const parts = [];
+      if (v.key_map) parts.push('key map');
+      if (v.sheets) parts.push(`${v.sheets} of ${v.pages} pages`);
+      return parts.join(' + ');
+    };
+    const volumes = props.volumes
+      .map(
+        (v) =>
+          `<li><a title="Go to item summary: ${v.title}" href="${v.url}">${v.year}</a> &middot; ${describe(v)}</li>`,
+      )
+      .join('');
+    return `
+      <h4 style="margin-bottom:0px;">${place.display_name}</h4>
+      <p style="margin-bottom:2px;"><a href="${place.url}">Browse ${n === 1 ? 'the map' : `all ${n} maps`} &rarr;</a></p>
+      ${place.viewer_url ? `<p style="margin-bottom:2px;"><a href="${place.viewer_url}">Explore georeferenced maps &rarr;</a></p>` : ''}
+      <div style="margin:10px 0 6px;">
+        <div style="border-bottom:1px dashed #000; height:12px;">
+          <span style="background:#fff; padding-right:5px;">${volumes ? 'Work in progress' : 'Not started yet'}</span>
+        </div>
+      </div>
+      ${volumes ? `<ul style="margin:0; list-style:none;">${volumes}</ul>` : '<p><em>Nothing georeferenced yet &mdash; start from the maps above.</em></p>'}
+    `;
+  }
+
   onMount(async function () {
     viewer = new MapViewer('map-viewer', CONTEXT.max_tiles_loading);
     viewer.addBasemaps();
@@ -62,7 +93,7 @@
           featureProjection: 'EPSG:3857',
         }),
       }),
-      style: browseMapStyle,
+      style: browseMapProgressStyle,
       zIndex: 500,
     });
     viewer.addLayer(placeLayer);
@@ -110,6 +141,12 @@
         function (feature) {
           if (hit || !feature.getProperties().volumes) return; // only map locations, one at a time
           const props = feature.getProperties();
+          if (props.status) {
+            content.innerHTML = progressPopup(props);
+            overlay.setPosition(feature.getGeometry().getCoordinates());
+            hit = true;
+            return;
+          }
           const volList = [];
           props.volumes.forEach(function (vol) {
             volList.push(`<a title="Go to item summary: ${vol.title}" href="${vol.url}">${vol.year}</a>`);
