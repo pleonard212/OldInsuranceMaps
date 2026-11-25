@@ -288,6 +288,11 @@ if DEBUG and ENABLE_DEBUG_TOOLBAR:
 
 TITILER_HOST = os.getenv("TITILER_HOST", "")
 
+# Optional GeoJSON drawn on the home page map (e.g. a state outline). Features are styled from
+# simplestyle-spec properties (stroke, stroke-width, stroke-opacity, fill, fill-opacity), and
+# the map is fit to the overlay's extent instead of the map locations. Empty = no overlay.
+HOME_MAP_OVERLAY_URL = os.getenv("HOME_MAP_OVERLAY_URL", "")
+
 OPENLAYERS_MAX_TILES_LOADING = os.getenv("OPENLAYERS_MAX_TILES_LOADING", 32)
 
 ## These creds are only actually used by boto3 if ENABLE_S3_STORAGE = True,
