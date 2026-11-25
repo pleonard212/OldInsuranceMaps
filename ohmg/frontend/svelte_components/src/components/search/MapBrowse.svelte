@@ -42,16 +42,25 @@
           `<li><a title="Go to item summary: ${v.title}" href="${v.url}">${v.year}</a> &middot; ${describe(v)}</li>`,
       )
       .join('');
+    if (!volumes) {
+      // nothing georeferenced yet: point to the maps, with a call to action
+      const see = n === 1 ? `See the ${place.map_years[0]} map` : `See ${n} maps`;
+      return `
+      <h4 style="margin-bottom:0px;">${place.display_name}</h4>
+      <p style="margin-bottom:2px;"><a href="${place.url}">${see} &rarr;</a></p>
+      <p><a href="${place.url}"><strong>Help us georeference &rarr;</strong></a></p>
+    `;
+    }
     return `
       <h4 style="margin-bottom:0px;">${place.display_name}</h4>
       <p style="margin-bottom:2px;"><a href="${place.url}">Browse ${n === 1 ? 'the map' : `all ${n} maps`} &rarr;</a></p>
       ${place.viewer_url ? `<p style="margin-bottom:2px;"><a href="${place.viewer_url}">Explore georeferenced maps &rarr;</a></p>` : ''}
       <div style="margin:10px 0 6px;">
         <div style="border-bottom:1px dashed #000; height:12px;">
-          <span style="background:#fff; padding-right:5px;">${volumes ? 'Work in progress' : 'Not started yet'}</span>
+          <span style="background:#fff; padding-right:5px;">Work in progress</span>
         </div>
       </div>
-      ${volumes ? `<ul style="margin:0; list-style:none;">${volumes}</ul>` : '<p><em>Nothing georeferenced yet &mdash; start from the maps above.</em></p>'}
+      <ul style="margin:0; list-style:none;">${volumes}</ul>
     `;
   }
 

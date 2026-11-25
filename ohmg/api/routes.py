@@ -279,9 +279,18 @@ def _places_geojson_with_progress() -> dict:
         for place in map.locales.all():
             entry = places.setdefault(
                 place.slug,
-                {"display_name": place.display_name, "maps": 0, "volumes": [], "extent": None},
+                {
+                    "display_name": place.display_name,
+                    "maps": 0,
+                    "years": [],
+                    "volumes": [],
+                    "extent": None,
+                },
             )
             entry["maps"] += 1
+            entry["years"].append(
+                f"{map.year} vol. {map.volume_number}" if map.volume_number else map.year
+            )
             if not (n_main or n_key):
                 continue
             entry["volumes"].append(
@@ -321,6 +330,7 @@ def _places_geojson_with_progress() -> dict:
                         "url": f"/{slug}/",
                         "viewer_url": f"/viewer/{slug}" if has_main else None,
                         "map_count": entry["maps"],
+                        "map_years": entry["years"],
                     },
                 },
             }
