@@ -144,18 +144,29 @@
     });
 
     viewer.map.on('singleclick', function (event) {
+      // progress mode: one popup for every place point under the click, so places whose
+      // points overlap at this zoom (e.g. Goldfield and Columbia) can all be reached
+      const places = viewer.map
+        .getFeaturesAtPixel(event.pixel, { hitTolerance: 2 })
+        .filter((feature) => feature.getProperties().status)
+        .sort((a, b) =>
+          a.get('place').display_name.localeCompare(b.get('place').display_name),
+        );
+      if (places.length) {
+        const sections = places.map((feature) => progressPopup(feature.getProperties()));
+        content.innerHTML =
+          places.length === 1
+            ? sections[0]
+            : `<div class="popup-multi">${sections.join('<hr class="popup-divider">')}</div>`;
+        overlay.setPosition(places[0].getGeometry().getCoordinates());
+        return;
+      }
       let hit = false;
       viewer.map.forEachFeatureAtPixel(
         event.pixel,
         function (feature) {
           if (hit || !feature.getProperties().volumes) return; // only map locations, one at a time
           const props = feature.getProperties();
-          if (props.status) {
-            content.innerHTML = progressPopup(props);
-            overlay.setPosition(feature.getGeometry().getCoordinates());
-            hit = true;
-            return;
-          }
           const volList = [];
           props.volumes.forEach(function (vol) {
             volList.push(`<a title="Go to item summary: ${vol.title}" href="${vol.url}">${vol.year}</a>`);
@@ -230,6 +241,15 @@
     animation: spinner 0.8s linear infinite;
   }
 
+  :global(.popup-multi) {
+    max-height: 300px;
+    overflow-y: auto;
+  }
+  :global(.popup-divider) {
+    margin: 10px 0;
+    border: none;
+    border-top: 1px solid #cccccc;
+  }
   .ol-popup {
     position: absolute;
     background-color: white;
