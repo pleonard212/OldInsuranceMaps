@@ -3,6 +3,7 @@ import xml.etree.ElementTree as ET
 
 import humanize
 import requests
+from django.conf import settings
 from django.shortcuts import render
 from django.views import View
 
@@ -14,6 +15,34 @@ from ohmg.places.models import Place
 from .models import Partner
 
 logger = logging.getLogger(__name__)
+
+
+def get_blog_posts(feed_url: str, limit: int = 5) -> list[dict]:
+    """Return the latest posts (title, link, date) from an RSS feed, for the home page."""
+    blog_posts = []
+    try:
+        response = requests.get(feed_url, timeout=settings.BLOG_FEED_TIMEOUT)
+        root = ET.fromstring(response.content)
+        for n, item in enumerate(root.findall(".//item"), start=1):
+            if item.find("pubDate") is not None:
+                datestr = item.find("pubDate").text
+                datestr = datestr[:-15]
+            else:
+                datestr = "No date"
+            blog_posts.append(
+                {
+                    "title": item.find("title").text
+                    if item.find("title") is not None
+                    else "No Title",
+                    "link": item.find("link").text if item.find("link") is not None else "No Link",
+                    "date": datestr,
+                }
+            )
+            if n == limit:
+                break
+    except Exception as e:
+        logger.warning(f"Error fetching blog posts from {feed_url}: {e}")
+    return blog_posts
 
 
 class HomePage(View):
@@ -43,32 +72,7 @@ class HomePage(View):
             len(set(SessionBase.objects.all().values_list("user_id", flat=True)))
         )
 
-        ## get blog posts to display on home page
-        blog_posts = []
-        try:
-            response = requests.get("https://blog.oldinsurancemaps.net/feed.xml")
-            root = ET.fromstring(response.content)
-            for n, item in enumerate(root.findall(".//item"), start=1):
-                if item.find("pubDate") is not None:
-                    datestr = item.find("pubDate").text
-                    datestr = datestr[:-15]
-                else:
-                    datestr = "No date"
-                blog_posts.append(
-                    {
-                        "title": item.find("title").text
-                        if item.find("title") is not None
-                        else "No Title",
-                        "link": item.find("link").text
-                        if item.find("link") is not None
-                        else "No Link",
-                        "date": datestr,
-                    }
-                )
-                if n == 5:
-                    break
-        except Exception as e:
-            logger.warning("Error fetching blog posts:", e)
+        blog_posts = get_blog_posts(settings.BLOG_FEED_URL) if settings.BLOG_FEED_URL else []
 
         context_dict = {
             "PARTNERS": partners,
