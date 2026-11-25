@@ -3,6 +3,7 @@ import Stroke from 'ol/style/Stroke';
 import Circle from 'ol/style/Circle';
 import Fill from 'ol/style/Fill';
 import RegularShape from 'ol/style/RegularShape';
+import { asArray } from 'ol/color';
 
 export const colors = {
   black: '#000000',
@@ -174,3 +175,28 @@ export const rotateCenterStyle = new Style({
     }),
   }),
 });
+
+// GEOJSON OVERLAYS (simplestyle-spec properties)
+
+function colorWithOpacity(color, opacity) {
+  const rgba = asArray(color).slice();
+  if (opacity !== undefined) rgba[3] = opacity;
+  return rgba;
+}
+
+// Style a feature from its simplestyle-spec properties: stroke, stroke-width, stroke-opacity,
+// fill, fill-opacity. A feature without "fill" is not filled; "stroke-width": 0 draws no outline.
+export function simpleStyle(feature) {
+  const p = feature.getProperties();
+  const strokeWidth = p['stroke-width'] ?? 2;
+  return new Style({
+    fill: p.fill ? new Fill({ color: colorWithOpacity(p.fill, p['fill-opacity'] ?? 0.6) }) : undefined,
+    stroke:
+      strokeWidth > 0
+        ? new Stroke({
+            color: colorWithOpacity(p.stroke ?? '#555555', p['stroke-opacity'] ?? 1),
+            width: strokeWidth,
+          })
+        : undefined,
+  });
+}
