@@ -217,6 +217,11 @@ AVATAR_DEFAULT_URL = os.getenv("AVATAR_DEFAULT_URL", "icons/noun-user-1213267-FF
 PLAUSIBLE_DATA_DOMAIN = os.getenv("PLAUSIBLE_DATA_DOMAIN")
 PLAUSIBLE_SOURCE_SCRIPT = os.getenv("PLAUSIBLE_SOURCE_SCRIPT")
 
+# RSS feed whose latest posts are listed on the home page. Set BLOG_FEED_URL to an empty
+# string to skip fetching it (e.g. for instances that don't show the blog).
+BLOG_FEED_URL = os.getenv("BLOG_FEED_URL", "https://blog.oldinsurancemaps.net/feed.xml")
+BLOG_FEED_TIMEOUT = float(os.getenv("BLOG_FEED_TIMEOUT", "5"))
+
 PROSOPO_SITE_KEY = os.getenv("PROSOPO_SITE_KEY")
 PROSOPO_SECRET_KEY = os.getenv("PROSOPO_SECRET_KEY")
 
